@@ -2,9 +2,12 @@
 
 `iprfc` is a tool to download all RFCs in PDF form, store them on IPFS, and index them using the Lens search engine.
 
+> [!NOTE]
+> **2026 Restoration:** This utility is a fork of `iprfc`, which had stopped working. In April 2026, it was fully restored using a different PDF source mirror.
+
 # Installation
 
-Before proceeding you'll need to have a valid install of Go 1.14 to build. 
+Before proceeding you'll need to have a valid install of Go 1.22+.
 
 1) Download dependencies with `go mod download`
 2) Build with `make deps` and then `make build` and an executable called `iprfc` will be created in the current directory
