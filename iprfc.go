@@ -20,8 +20,8 @@ import (
 var (
 	// error is returned when we've downloaded the last rfc
 	errMoreRFCs = errors.New("no more rfcs to download")
-	baseURL     = "https://tools.ietf.org/pdf/"
-	// https://tools.ietf.org/pdf/rfc5245.pdf
+	baseURL     = "https://www.rfc-editor.org/rfc/pdfrfc/"
+	// https://www.rfc-editor.org/rfc/pdfrfc/rfc5245.txt.pdf
 
 	// httpClient is a shared HTTP client with a reasonable timeout.
 	httpClient = &http.Client{
@@ -41,7 +41,7 @@ func GetRFC(num int) string {
 
 // FormatURL returns a url to download an RFC
 func FormatURL(rfc string) string {
-	return baseURL + rfc + ".pdf"
+	return baseURL + rfc + ".txt.pdf"
 }
 
 // GetAndSave downloads an RFC as a PDF and saves it to disk.
