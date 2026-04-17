@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	pbr "github.com/RTradeLtd/grpc/lens/request"
 
@@ -21,6 +22,16 @@ var (
 	errMoreRFCs = errors.New("no more rfcs to download")
 	baseURL     = "https://tools.ietf.org/pdf/"
 	// https://tools.ietf.org/pdf/rfc5245.pdf
+
+	// httpClient is a shared HTTP client with a reasonable timeout.
+	httpClient = &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	// userAgent mimics a real browser to avoid WAF/bot-protection blocks.
+	userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+		"AppleWebKit/537.36 (KHTML, like Gecko) " +
+		"Chrome/125.0.0.0 Safari/537.36"
 )
 
 // GetRFC gets an RFC number
@@ -33,22 +44,60 @@ func FormatURL(rfc string) string {
 	return baseURL + rfc + ".pdf"
 }
 
-// GetAndSave is used to download an RFC as a PFD
+// GetAndSave downloads an RFC as a PDF and saves it to disk.
+//
+// The request is sent with realistic browser headers (User-Agent, Accept)
+// to reduce the chance of being blocked by WAF / bot-protection systems.
+// Before writing to disk the function validates that the server actually
+// returned a PDF (Content-Type contains "application/pdf"). If the
+// response is something else (e.g. an HTML challenge page) the file is
+// NOT created and a descriptive error is returned.
 func GetAndSave(rfc string) error {
 	url := FormatURL(rfc)
-	resp, err := http.Get(url)
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("creating request for %s: %w", url, err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/pdf")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 404 {
+
+	if resp.StatusCode == http.StatusNotFound {
 		return errMoreRFCs
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d for %s", resp.StatusCode, url)
 	}
-	return ioutil.WriteFile(rfc+".pdf", body, os.FileMode(0640))
+
+	// Validate that the server returned a PDF, not an HTML challenge page.
+	ct := resp.Header.Get("Content-Type")
+	if !strings.Contains(ct, "application/pdf") {
+		return fmt.Errorf(
+			"ожидался application/pdf, получен %q для %s — возможно блокировка WAF",
+			ct, url,
+		)
+	}
+
+	outFile, err := os.Create(rfc + ".pdf")
+	if err != nil {
+		return fmt.Errorf("creating file %s.pdf: %w", rfc, err)
+	}
+	defer outFile.Close()
+
+	if _, err := io.Copy(outFile, resp.Body); err != nil {
+		// Best-effort cleanup of partially written file.
+		os.Remove(rfc + ".pdf")
+		return fmt.Errorf("writing %s.pdf: %w", rfc, err)
+	}
+
+	return nil
 }
 
 // DownloadAndSave is used to download and save a file
@@ -79,7 +128,7 @@ func DownloadAndSave(max int) {
 //
 // It reads all files in the current directory, adds it to IPFS, and then indexing it against Lens
 func StoreAndIndex(ctx context.Context, sh *ipfsapi.Shell, lc *lens.Client, index bool) error {
-	files, err := ioutil.ReadDir(".")
+	files, err := os.ReadDir(".")
 	if err != nil {
 		return err
 	}
