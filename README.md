@@ -10,7 +10,7 @@
 Before proceeding you'll need to have a valid install of Go 1.22+.
 
 1) Download dependencies with `go mod download`
-2) Build with `make deps` and then `make build` and an executable called `iprfc` will be created in the current directory
+2) Build with `make build` and an executable called `iprfc` will be created in the current directory
 
 # Usage
 
