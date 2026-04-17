@@ -22,7 +22,8 @@ tests:
 .PHONY: tidy
 tidy: imports fmt
 	go vet ./...
-	golint ./...
+	go mod tidy
+	$(MAKE) staticcheck
 
 # automatically add missing imports
 .PHONY: imports
@@ -38,4 +39,4 @@ verifiers: staticcheck
 
 staticcheck:
 	@echo "Running $@ check"
-	@GO111MODULE=on ${GOPATH}/bin/staticcheck ./...
+	staticcheck ./...

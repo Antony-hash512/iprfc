@@ -1,7 +1,6 @@
 package iprfc
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -11,7 +10,7 @@ func TestIPRFC(t *testing.T) {
 		os.Remove("rfc1.pdf")
 	})
 	DownloadAndSave(1)
-	data, err := ioutil.ReadFile("rfc1.pdf")
+	data, err := os.ReadFile("rfc1.pdf")
 	if err != nil {
 		t.Fatal(err)
 	}
