@@ -100,28 +100,87 @@ func GetAndSave(rfc string) error {
 	return nil
 }
 
-// DownloadAndSave is used to download and save a file
-func DownloadAndSave(max int) {
-	var count = 1
-	for {
-	START:
-		// max of 0 mens no more to download
-		// this allows us to do testing without downloading everything
-		if max != 0 && count > max {
-			return
+// maxConsecutiveMisses is the number of consecutive 404s before auto-stopping
+// when running in unlimited mode (max == 0).
+const maxConsecutiveMisses = 100
+
+// DownloadOptions configures the behavior of DownloadAndSave.
+type DownloadOptions struct {
+	Min       int  // first RFC number to download (default: 1)
+	Max       int  // last RFC number to download, 0 means unlimited
+	Overwrite bool // if false, skip files that already exist on disk
+}
+
+// DownloadAndSave downloads RFCs in the range [opts.Min, opts.Max] and saves
+// them as PDF files in the current directory.
+//
+// When opts.Max is 0 (unlimited mode), downloading stops automatically after
+// 100 consecutive 404 responses, indicating the end of the RFC numbering space.
+//
+// Progress is printed to stdout for every RFC processed.
+func DownloadAndSave(opts DownloadOptions) {
+	if opts.Min < 1 {
+		opts.Min = 1
+	}
+
+	var (
+		downloaded      int
+		skipped         int
+		missed          int
+		consecutiveMiss int
+		startTime       = time.Now()
+	)
+
+	for count := opts.Min; ; count++ {
+		// Stop if we've reached the upper bound (when max > 0).
+		if opts.Max != 0 && count > opts.Max {
+			break
 		}
-		err := GetAndSave(GetRFC(count))
+
+		rfc := GetRFC(count)
+		filename := rfc + ".pdf"
+
+		// Skip already downloaded files unless --overwrite is set.
+		if !opts.Overwrite {
+			if _, err := os.Stat(filename); err == nil {
+				skipped++
+				fmt.Printf("[SKIP]  %s (already exists)\n", filename)
+				consecutiveMiss = 0 // existing file resets the miss counter
+				continue
+			}
+		}
+
+		err := GetAndSave(rfc)
 		switch err {
 		case nil:
-			count++
-			goto START
+			downloaded++
+			consecutiveMiss = 0
+			fmt.Printf("[OK]    %s  (downloaded: %d, skipped: %d, missed: %d)\n",
+				filename, downloaded, skipped, missed)
 		case errMoreRFCs:
-			count++
-			goto START
+			missed++
+			consecutiveMiss++
+			fmt.Printf("[MISS]  %s  (not found on server)\n", filename)
+			// In unlimited mode, stop after too many consecutive misses.
+			if opts.Max == 0 && consecutiveMiss >= maxConsecutiveMisses {
+				fmt.Printf("\n--- Auto-stop: %d consecutive misses reached. "+
+					"Assuming end of RFC numbering. ---\n", maxConsecutiveMisses)
+				break
+			}
+			continue
 		default:
 			log.Fatalf("error downloading rfc: %s", err)
 		}
+
+		// Break out of the outer for-loop if we hit the auto-stop above.
+		if opts.Max == 0 && consecutiveMiss >= maxConsecutiveMisses {
+			break
+		}
 	}
+
+	elapsed := time.Since(startTime).Round(time.Second)
+	fmt.Printf("\n=== Done in %s. Downloaded: %d, Skipped: %d, Missed: %d ===\n",
+		elapsed, downloaded, skipped, missed)
 }
 
 // StoreAndIndex is used to store a file on IPFS and index it

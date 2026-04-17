@@ -30,7 +30,9 @@ COMMANDS:
    help, h            Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
+   --min.rfc value        the minimum (starting) rfc number to download (default: 1)
    --max.rfc value        the maximum rfc to download, 0 means no max (default: 1)
+   --overwrite            overwrite existing PDF files instead of skipping them (default: false)
    --ipfs.endpoint value  the go-ipfs api endpoint to use (default: "127.0.0.1:5001")
    --lens.endpoint value  the lens grpc endpoint to use (default: "127.0.0.1:9998")
    --index                whether or not to initiate lens indexing (default: false)
@@ -39,11 +41,50 @@ GLOBAL OPTIONS:
 
 ## Downloading RFCs
 
-The most basic functionality of this tool consists of download all available RFCs in PDF format, saving them in the current directory. To prevent you from accidentally spamming the IETF website, the default setting is to download the first RFC, and then exit. This can be configured with the `--max.rfc` flag.
+The most basic functionality of this tool consists of downloading all available RFCs in PDF format, saving them in the current directory. To prevent you from accidentally spamming the IETF website, the default setting is to download the first RFC, and then exit. This can be configured with the `--min.rfc` and `--max.rfc` flags.
 
-To download the first 2 RFCs run `./iprfc --max.rfc 2 download-and-save`. 
+**Examples:**
 
-To download all available RFCs run `./iprfc --max.rfc 0 download-and-save`. Note that this will require you manually exit the process. I couldn't think of a good way to detect when finished downloading all RFCs. Initially I tried using the 404 status code, but apparently some RFC numbers dont exist, and this turned out to not be a good way. PRs welcomed for this functionality.
+Download the first 10 RFCs:
+```bash
+./iprfc --max.rfc 10 download-and-save
+```
+
+Download RFCs 100 through 200 (useful for resuming):
+```bash
+./iprfc --min.rfc 100 --max.rfc 200 download-and-save
+```
+
+Download all available RFCs (auto-stops after 100 consecutive misses):
+```bash
+./iprfc --max.rfc 0 download-and-save
+```
+
+Re-download and overwrite already existing files:
+```bash
+./iprfc --max.rfc 10 --overwrite download-and-save
+```
+
+### Progress output
+
+The utility prints real-time progress for every RFC it processes:
+
+```
+[OK]    rfc1.pdf  (downloaded: 1, skipped: 0, missed: 0)
+[OK]    rfc2.pdf  (downloaded: 2, skipped: 0, missed: 0)
+[SKIP]  rfc3.pdf (already exists)
+[MISS]  rfc4.pdf  (not found on server)
+
+=== Done in 3s. Downloaded: 2, Skipped: 1, Missed: 1 ===
+```
+
+### Smart auto-stop
+
+When running in unlimited mode (`--max.rfc 0`), the utility automatically stops after **100 consecutive 404 responses**, indicating that the end of the RFC numbering space has been reached. This prevents infinite loops while still handling gaps in RFC numbering gracefully.
+
+### Skip existing files
+
+By default, already downloaded PDFs are **not re-downloaded**. Use `--overwrite` to force re-downloading. This allows you to safely resume interrupted downloads without wasting time or bandwidth.
 
 ## Storing On IPFS And Indexing
 

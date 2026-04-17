@@ -19,9 +19,19 @@ func main() {
 	app.Description = "It requires at a minimum being able to access a go-ipfs node, and optionally a Lens endpoint to index against"
 	app.Flags = []cli.Flag{
 		&cli.IntFlag{
+			Name:  "min.rfc",
+			Usage: "the minimum (starting) rfc number to download",
+			Value: 1,
+		},
+		&cli.IntFlag{
 			Name:  "max.rfc",
 			Usage: "the maximum rfc to download, 0 means no max",
 			Value: 1,
+		},
+		&cli.BoolFlag{
+			Name:  "overwrite",
+			Usage: "overwrite existing PDF files instead of skipping them",
+			Value: false,
 		},
 		&cli.StringFlag{
 			Name:  "ipfs.endpoint",
@@ -45,7 +55,11 @@ func main() {
 			Usage:       "download all known RFCs and save",
 			Description: "this will download all known RFCs and save to the current directory",
 			Action: func(c *cli.Context) error {
-				iprfc.DownloadAndSave(c.Int("max.rfc"))
+				iprfc.DownloadAndSave(iprfc.DownloadOptions{
+					Min:       c.Int("min.rfc"),
+					Max:       c.Int("max.rfc"),
+					Overwrite: c.Bool("overwrite"),
+				})
 				return nil
 			},
 		},

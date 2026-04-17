@@ -9,7 +9,7 @@ func TestIPRFC(t *testing.T) {
 	t.Cleanup(func() {
 		os.Remove("rfc1.pdf")
 	})
-	DownloadAndSave(1)
+	DownloadAndSave(DownloadOptions{Min: 1, Max: 1})
 	data, err := os.ReadFile("rfc1.pdf")
 	if err != nil {
 		t.Fatal(err)
