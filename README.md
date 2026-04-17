@@ -7,7 +7,7 @@
 Before proceeding you'll need to have a valid install of Go 1.14 to build. 
 
 1) Download dependencies with `go mod download`
-2) Build with `make` and an executable called `iprfc` will be created in the current directory
+2) Build with `make deps` and then `make build` and an executable called `iprfc` will be created in the current directory
 
 # Usage
 
@@ -38,9 +38,9 @@ GLOBAL OPTIONS:
 
 The most basic functionality of this tool consists of download all available RFCs in PDF format, saving them in the current directory. To prevent you from accidentally spamming the IETF website, the default setting is to download the first RFC, and then exit. This can be configured with the `--max.rfc` flag.
 
-To download the first 2 RFCs run `iprfc --max.rfc 2 download-and-save`. 
+To download the first 2 RFCs run `./iprfc --max.rfc 2 download-and-save`. 
 
-To download all available RFCs run `iprfc --max.rfc 0 download-and-save`. Note that this will require you manually exit the process. I couldn't think of a good way to detect when finished downloading all RFCs. Initially I tried using the 404 status code, but apparently some RFC numbers dont exist, and this turned out to not be a good way. PRs welcomed for this functionality.
+To download all available RFCs run `./iprfc --max.rfc 0 download-and-save`. Note that this will require you manually exit the process. I couldn't think of a good way to detect when finished downloading all RFCs. Initially I tried using the 404 status code, but apparently some RFC numbers dont exist, and this turned out to not be a good way. PRs welcomed for this functionality.
 
 ## Storing On IPFS And Indexing
 
@@ -50,6 +50,6 @@ Because not everyone will have access to a Lens gRPC endpoint (Lens is open-sour
 
 One thing to note is that this will pick up **ANY** PDF's in the current directory, so make sure you run this without any sensitive files in place.
 
-To save all RFCs onto ipfs and not index run `iprfc store-and-index`.
+To save all RFCs onto ipfs and not index run `./iprfc store-and-index`.
 
-To save all RFCs onto IPFS and index run `iprfc --index store-and-index`.
+To save all RFCs onto IPFS and index run `./iprfc --index store-and-index`.
