@@ -40,7 +40,7 @@ The most basic functionality of this tool consists of download all available RFC
 
 To download the first 2 RFCs run `iprfc --max.rfc 2 download-and-save`. 
 
-To download all available RFCs run `iprfc --max.rfc 0 download-save`. Note that this will require you manually exit the process. I couldn't think of a good way to detect when finished downloading all RFCs. Initially I tried using the 404 status code, but apparently some RFC numbers dont exist, and this turned out to not be a good way. PRs welcomed for this functionality.
+To download all available RFCs run `iprfc --max.rfc 0 download-and-save`. Note that this will require you manually exit the process. I couldn't think of a good way to detect when finished downloading all RFCs. Initially I tried using the 404 status code, but apparently some RFC numbers dont exist, and this turned out to not be a good way. PRs welcomed for this functionality.
 
 ## Storing On IPFS And Indexing
 
