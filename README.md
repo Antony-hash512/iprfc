@@ -3,7 +3,7 @@
 `iprfc` is a tool to download all RFCs in PDF form, store them on IPFS, and index them using the Lens search engine.
 
 > [!NOTE]
-> **2026 Restoration:** This utility is a fork of a 6 year old `iprfc` project, which had stopped working. In April 2026, in this fork I (Antony-hash512) fixed the functionality using a different PDF source mirror.
+> **2026 Restoration:** This utility is a fork of a 6-year-old `iprfc` project that had stopped working. In April 2026, this fork (by Antony-hash512) was fully restored and enhanced. Improvements include a reliable PDF source mirror, and a modernized CLI with resuming support (`--min.rfc`, `--overwrite`), an informative progress tracker, and a smart auto-stop mechanism to handle the end of the RFC numbering space gracefully.
 
 # Installation
 
