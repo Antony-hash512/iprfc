@@ -39,65 +39,73 @@ func GetRFC(num int) string {
 	return fmt.Sprintf("rfc%v", num)
 }
 
-// FormatURL returns a url to download an RFC
-func FormatURL(rfc string) string {
-	return baseURL + rfc + ".txt.pdf"
+// FormatURLs returns a list of candidate URLs to try for a given RFC.
+// IETF changed their naming convention around RFC 8700.
+func FormatURLs(rfc string) []string {
+	return []string{
+		// Modern convention (direct PDF)
+		"https://www.rfc-editor.org/rfc/" + rfc + ".pdf",
+		// Legacy convention (txt-based PDF)
+		"https://www.rfc-editor.org/rfc/pdfrfc/" + rfc + ".txt.pdf",
+	}
 }
 
 // GetAndSave downloads an RFC as a PDF and saves it to disk.
-//
-// The request is sent with realistic browser headers (User-Agent, Accept)
-// to reduce the chance of being blocked by WAF / bot-protection systems.
-// Before writing to disk the function validates that the server actually
-// returned a PDF (Content-Type contains "application/pdf"). If the
-// response is something else (e.g. an HTML challenge page) the file is
-// NOT created and a descriptive error is returned.
 func GetAndSave(rfc string) error {
-	url := FormatURL(rfc)
+	urls := FormatURLs(rfc)
+	var lastErr error
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("creating request for %s: %w", url, err)
-	}
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Accept", "application/pdf")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	for _, url := range urls {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			lastErr = fmt.Errorf("creating request for %s: %w", url, err)
+			continue
+		}
+		req.Header.Set("User-Agent", userAgent)
+		req.Header.Set("Accept", "application/pdf")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
-	}
-	defer resp.Body.Close()
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("downloading %s: %w", url, err)
+			continue
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return errMoreRFCs
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status %d for %s", resp.StatusCode, url)
+		// If 404, try the next candidate URL.
+		if resp.StatusCode == http.StatusNotFound {
+			lastErr = errMoreRFCs
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("unexpected status %d for %s", resp.StatusCode, url)
+			continue
+		}
+
+		// Validate Content-Type to ensure it's a PDF.
+		ct := resp.Header.Get("Content-Type")
+		if !strings.Contains(ct, "application/pdf") {
+			lastErr = fmt.Errorf("expected application/pdf, got %q for %s", ct, url)
+			continue
+		}
+
+		// If we got here, we have a valid PDF. Save it.
+		outFile, err := os.Create(rfc + ".pdf")
+		if err != nil {
+			return fmt.Errorf("creating file %s.pdf: %w", rfc, err)
+		}
+		defer outFile.Close()
+
+		if _, err := io.Copy(outFile, resp.Body); err != nil {
+			os.Remove(rfc + ".pdf")
+			return fmt.Errorf("writing %s.pdf: %w", rfc, err)
+		}
+
+		return nil // Success!
 	}
 
-	// Validate that the server returned a PDF, not an HTML challenge page.
-	ct := resp.Header.Get("Content-Type")
-	if !strings.Contains(ct, "application/pdf") {
-		return fmt.Errorf(
-			"ожидался application/pdf, получен %q для %s — возможно блокировка WAF",
-			ct, url,
-		)
-	}
-
-	outFile, err := os.Create(rfc + ".pdf")
-	if err != nil {
-		return fmt.Errorf("creating file %s.pdf: %w", rfc, err)
-	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, resp.Body); err != nil {
-		// Best-effort cleanup of partially written file.
-		os.Remove(rfc + ".pdf")
-		return fmt.Errorf("writing %s.pdf: %w", rfc, err)
-	}
-
-	return nil
+	return lastErr
 }
 
 // maxConsecutiveMisses is the number of consecutive 404s before auto-stopping
