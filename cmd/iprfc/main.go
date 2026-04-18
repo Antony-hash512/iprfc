@@ -15,6 +15,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "iprfc"
+	app.Version = "2.0.0"
 	app.Usage = "a tool to download all known RFCs in PDF and add them to IPFS"
 	app.Description = "It requires at a minimum being able to access a go-ipfs node, and optionally a Lens endpoint to index against"
 	app.Flags = []cli.Flag{
